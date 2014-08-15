@@ -36,6 +36,22 @@ LOG = logging.getLogger(__name__)
 
 VALID_BOOT_DEVICES = ['net', 'hd', 'cd', 'floppy', 'def', 'stat']
 VALID_PRIV_LEVELS = ['ADMINISTRATOR', 'CALLBACK', 'OPERATOR', 'USER']
+
+REQUIRED_PROPERTIES = {
+    'ipmi_address': _("IP address or hostname of the node. Required.")
+}
+OPTIONAL_PROPERTIES = {
+    'ipmi_password': _("password. Optional."),
+    'ipmi_priv_level': _("privilege level; default is ADMINISTRATOR. One of "
+                         "%s. Optional.") % ', '.join(VALID_PRIV_LEVELS),
+    'ipmi_username': _("username; default is NULL user. Optional.")
+}
+COMMON_PROPERTIES = REQUIRED_PROPERTIES.copy()
+COMMON_PROPERTIES.update(OPTIONAL_PROPERTIES)
+CONSOLE_PROPERTIES = {
+    'ipmi_terminal_port': _("node's UDP port to connect to. Only required for "
+                            "console access.")
+}
 TIMING_SUPPORT = None
 
 
@@ -298,6 +314,8 @@ class XcatPower(base.PowerInterface):
                     driver=self.__class__.__name__,
                     reason="Unable to locate usable xcat command in "
                            "the system path when checking xcat version")
+    def get_properties(self):
+        return COMMON_PROPERTIES
 
     def validate(self, task):
         """Validate driver_info for xcat driver.
@@ -366,6 +384,10 @@ class XcatPower(base.PowerInterface):
             raise exception.PowerStateFailure(pstate=states.POWER_ON)
 
 class VendorPassthru(base.VendorInterface):
+
+    def get_properties(self):
+        return COMMON_PROPERTIES
+
     @task_manager.require_exclusive_lock
     def _set_boot_device(self, task, device, persistent=False):
         """Set the boot device for a node.
@@ -429,6 +451,8 @@ class IPMIShellinaboxConsole(base.ConsoleInterface):
                     driver=self.__class__.__name__,
                     reason="Unable to locate usable xcat command in "
                            "the system path when checking xcat version")
+    def get_properties(self):
+        return COMMON_PROPERTIES
 
     def validate(self, task):
         """Validate the Node console info.
