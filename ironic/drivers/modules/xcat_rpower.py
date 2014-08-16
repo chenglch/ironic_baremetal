@@ -34,9 +34,7 @@ CONF.import_opt('min_command_interval',
 
 LOG = logging.getLogger(__name__)
 
-VALID_BOOT_DEVICES = ['net', 'hd', 'cd', 'floppy', 'def', 'stat']
 VALID_PRIV_LEVELS = ['ADMINISTRATOR', 'CALLBACK', 'OPERATOR', 'USER']
-
 REQUIRED_PROPERTIES = {
     'ipmi_address': _("IP address or hostname of the node. Required.")
 }
@@ -382,63 +380,6 @@ class XcatPower(base.PowerInterface):
 
         if state != states.POWER_ON:
             raise exception.PowerStateFailure(pstate=states.POWER_ON)
-
-class VendorPassthru(base.VendorInterface):
-
-    def get_properties(self):
-        return COMMON_PROPERTIES
-
-    @task_manager.require_exclusive_lock
-    def _set_boot_device(self, task, device, persistent=False):
-        """Set the boot device for a node.
-
-        :param task: a TaskManager instance.
-        :param device: Boot device. One of [net, hd, cd, floppy, def, stat].
-        :param persistent: Whether to set next-boot, or make the change
-            permanent. Default: False.
-        :raises: InvalidParameterValue if an invalid boot device is specified
-            or if required ipmi parameters are missing.
-        :raises: IPMIFailure on an error from ipmitool.
-
-        """
-        if device not in VALID_BOOT_DEVICES:
-            raise exception.InvalidParameterValue(_(
-                "Invalid boot device %s specified.") % device)
-        cmd = "rsetboot"
-        if persistent:
-            cmd = cmd + " options=persistent"
-        driver_info = _parse_driver_info(task.node)
-        try:
-            xcat_util.exec_xcatcmd(driver_info, cmd, device)
-            # TODO(deva): validate (out, err) and add unit test for failure
-        except xcat_exception.xCATCmdFailure:
-            LOG.error(_("rsetboot %(node)s %(device)s"),{'node':driver_info['xcat_node]'],
-                                                         'device':device})
-
-
-    def validate(self, task, **kwargs):
-        """ run chdef command to config xcat node infomation """
-        method = kwargs['method']
-        if method == 'set_boot_device':
-            device = kwargs.get('device')
-            if device not in VALID_BOOT_DEVICES:
-                raise exception.InvalidParameterValue(_(
-                    "Invalid boot device %s specified.") % device)
-        else:
-            raise exception.InvalidParameterValue(_(
-                "Unsupported method (%s) passed to xcat driver.")
-                % method)
-        driver_info = _parse_driver_info(task.node)
-        chdef_node(driver_info)
-
-    def vendor_passthru(self, task, **kwargs):
-        method = kwargs['method']
-        if method == 'set_boot_device':
-            return self._set_boot_device(
-                        task,
-                        kwargs.get('device'),
-                        kwargs.get('persistent', False))
-
 
 class IPMIShellinaboxConsole(base.ConsoleInterface):
     """A ConsoleInterface that uses ipmitool and shellinabox."""
